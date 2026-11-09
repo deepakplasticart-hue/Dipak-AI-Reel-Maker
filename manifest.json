@@ -1,0 +1,10 @@
+{
+  "name": "Dipak AI Reel Maker",
+  "short_name": "Dipak Reel",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f2f8",
+  "theme_color": "#17152d",
+  "description": "Create Hindi story reels from scenes and images.",
+  "icons": []
+}

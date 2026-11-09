@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#17152d"><link rel="manifest" href="manifest.json">
+<title>Dipak AI Reel Maker</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="brand">🎬 <span>Dipak AI Reel Maker</span></div><div class="tag">Free-first • Hindi & English</div></header>
+<main>
+<section class="hero"><p class="eyebrow">YOUR STORY → YOUR SHORT VIDEO</p><h1>अपनी कहानी को Reel में बदलें</h1><p>कहानी लिखें, scenes बनाएं, अपनी तस्वीरें जोड़ें और वीडियो तैयार करें।</p></section>
+<section class="card payment-card">
+<h2>⭐ Premium Access</h2>
+<p id="planStatus">पहली Reel मुफ्त बनाएं। अगली Reel डाउनलोड करने के लिए Premium खरीदें।</p>
+<label class="email-label">भुगतान के समय इस्तेमाल किया गया Email
+<input id="buyerEmail" type="email" placeholder="name@example.com" autocomplete="email"></label>
+<div class="actions"><button class="secondary" id="checkPremium" type="button">भुगतान जाँचें</button><button class="pay-button" id="payNow" type="button">💳 ₹99 Premium खरीदें</button></div>
+<p id="premiumStatus" class="pay-note" aria-live="polite">भुगतान के बाद उसी Email से यहाँ जाँचें।</p>
+<p class="pay-note">भुगतान Razorpay के सुरक्षित Payment Link पर होगा। भुगतान Razorpay webhook से server पर सत्यापित होगा।</p>
+</section>
+<section class="card">
+<h2>1. अपनी कहानी लिखें</h2>
+<textarea id="story" rows="7" placeholder="यहाँ अपनी Moral Story लिखें...&#10;उदाहरण: एक छोटे गाँव में मोहन नाम का लड़का रहता था। वह रोज़ स्कूल जाता था..."></textarea>
+<div class="row"><label>वीडियो भाषा <select id="lang"><option value="hi-IN">हिंदी</option><option value="en-US">English</option></select></label><label>वीडियो अनुपात <select id="ratio"><option value="9:16">9:16 (YouTube Shorts)</option><option value="16:9">16:9 (YouTube)</option><option value="1:1">1:1 (Square)</option></select></label></div>
+<button class="primary" id="makeScenes">✨ कहानी से Scenes बनाएं</button>
+</section>
+<section class="card">
+<div class="section-head"><h2>2. Scenes और तस्वीरें</h2><span id="sceneCount">0 scenes</span></div>
+<p class="hint">हर scene के लिए अपनी cartoon/image अपलोड करें। खाली scene में रंगीन title card दिखाई देगा।</p>
+<div id="scenes" class="scenes"><div class="empty">अभी कोई scene नहीं है। पहले अपनी कहानी लिखें।</div></div>
+</section>
+<section class="card">
+<h2>3. Voice और वीडियो</h2>
+<div class="row"><label>आवाज़ <select id="voice"><option value="">डिवाइस की Default आवाज़</option></select></label><label>हर scene का समय <select id="duration"><option value="4">4 सेकंड</option><option value="5" selected>5 सेकंड</option><option value="7">7 सेकंड</option></select></label></div>
+<div class="actions"><button id="listen" class="secondary">🔊 कहानी सुनें</button><button id="preview" class="secondary">▶ Preview</button><button id="export" class="primary">⬇ पहली Reel मुफ्त बनाएं</button></div>
+<canvas id="canvas" width="720" height="1280"></canvas>
+<p id="status" class="status">तैयार। कहानी लिखकर Scenes बनाएं।</p>
+<a id="download" class="download" hidden>वीडियो डाउनलोड करें</a>
+</section>
+<section class="note"><b>ध्यान दें:</b> Premium activation के लिए backend server और Razorpay webhook को deploy/configure करना जरूरी है। सिर्फ ZIP खोलने से automatic verification चालू नहीं होगा।<br><br><b>तकनीकी सीमा:</b> यह शुरुआती free-first version है। यह आपके डिवाइस की उपलब्ध Hindi voice और browser recording का उपयोग करता है। असली AI cartoon image/video generation और MP4 export के लिए बाद में सुरक्षित AI service/API जोड़नी होगी; किसी paid API का उपयोग आपकी अनुमति के बिना नहीं होगा।</section>
+</main>
+<footer>Made for creators • Dipak AI Reel Maker</footer>
+<script src="payment-config.js"></script><script src="app.js"></script>
+</body></html>

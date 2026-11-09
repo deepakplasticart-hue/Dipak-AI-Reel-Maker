@@ -1,0 +1,16 @@
+{
+  "name": "dipak-ai-reel-maker",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Dipak AI Reel Maker with Razorpay webhook verification",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
