@@ -2,13 +2,14 @@
 <html lang="hi">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#17152d"><link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17152d"><link rel="manifest" href="manifest.json"><link rel="icon" type="image/svg+xml" href="logo.svg">
 <title>Dipak AI Reel Maker</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header><div class="brand">🎬 <span>Dipak AI Reel Maker</span></div><div class="tag">Free-first • Hindi & English</div></header>
+<header><div class="brand"><img src="logo.svg" alt="Dipak AI Reel Maker logo"><span>Dipak AI Reel Maker</span></div><div class="tag">Free-first • Hindi & English</div></header>
 <main>
 <section class="hero"><p class="eyebrow">YOUR STORY → YOUR SHORT VIDEO</p><h1>अपनी कहानी को Reel में बदलें</h1><p>कहानी लिखें, scenes बनाएं, अपनी तस्वीरें जोड़ें और वीडियो तैयार करें।</p></section>
+<section class="card"><h2>📲 अपने मोबाइल में ऐप इंस्टॉल करें</h2><p class="hint">यह इंस्टॉल बटन केवल इसी मोबाइल के लिए है। ऐप किसी दूसरे व्यक्ति को साझा/इंस्टॉल कराने की सुविधा नहीं देगा।</p><button id="installApp" class="secondary" type="button" hidden>📲 इस मोबाइल में Install करें</button><p id="installStatus" class="pay-note" aria-live="polite">Chrome के मेन्यू में “Add to Home screen” भी चुन सकते हैं।</p></section>
 <section class="card payment-card">
 <h2>⭐ Premium Access</h2>
 <p id="planStatus">पहली Reel मुफ्त बनाएं। अगली Reel डाउनलोड करने के लिए Premium खरीदें।</p>
@@ -18,26 +19,31 @@
 <p id="premiumStatus" class="pay-note" aria-live="polite">भुगतान के बाद उसी Email से यहाँ जाँचें।</p>
 <p class="pay-note">भुगतान Razorpay के सुरक्षित Payment Link पर होगा। भुगतान Razorpay webhook से server पर सत्यापित होगा।</p>
 </section>
+<section class="card ai-card">
+<h2>🤖 Gemini AI (अपनी API Key)</h2><p class="hint">अपनी Gemini API key केवल इस डिवाइस में सेव करें। AI कहानी बनाने के लिए ग्राहक की अपनी key इस्तेमाल होगी—आपकी API billing नहीं।</p>
+<label class="key-label">Gemini API Key <input id="geminiKey" type="password" placeholder="AIza…" autocomplete="off"></label>
+<div class="actions"><button id="saveGeminiKey" class="secondary" type="button">🔐 Key सेव करें</button><button id="clearGeminiKey" class="secondary" type="button">Key हटाएँ</button><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio से Key लें ↗</a></div><p id="geminiStatus" class="pay-note" aria-live="polite">Key आपके browser के local storage में रहेगी।</p>
+</section>
 <section class="card">
-<h2>1. अपनी कहानी लिखें</h2>
+<h2>1. अपनी कहानी लिखें</h2><p class="hint">एक लाइन लिखें और Gemini से हिंदी कहानी व scene text तैयार करवाएँ।
 <textarea id="story" rows="7" placeholder="यहाँ अपनी Moral Story लिखें...&#10;उदाहरण: एक छोटे गाँव में मोहन नाम का लड़का रहता था। वह रोज़ स्कूल जाता था..."></textarea>
 <div class="row"><label>वीडियो भाषा <select id="lang"><option value="hi-IN">हिंदी</option><option value="en-US">English</option></select></label><label>वीडियो अनुपात <select id="ratio"><option value="9:16">9:16 (YouTube Shorts)</option><option value="16:9">16:9 (YouTube)</option><option value="1:1">1:1 (Square)</option></select></label></div>
-<button class="primary" id="makeScenes">✨ कहानी से Scenes बनाएं</button>
+<div class="actions"><button class="secondary" id="geminiCreate" type="button">✨ Gemini से कहानी + Scenes</button><button class="primary" id="makeScenes">Scenes बनाएं (मौजूदा टेक्स्ट)</button></div>
 </section>
 <section class="card">
 <div class="section-head"><h2>2. Scenes और तस्वीरें</h2><span id="sceneCount">0 scenes</span></div>
-<p class="hint">हर scene के लिए अपनी cartoon/image अपलोड करें। खाली scene में रंगीन title card दिखाई देगा।</p>
+<p class="hint">हर दृश्य की तस्वीर खुद अपलोड करें या अपनी Gemini API Key से AI तस्वीर बनाने का प्रयास करें। Image API की उपलब्धता/लागत Google की quota और मॉडल पर निर्भर है।</p><div class="actions"><button id="generateImages" class="secondary" type="button">🎨 Gemini से सभी Scene Images</button></div>
 <div id="scenes" class="scenes"><div class="empty">अभी कोई scene नहीं है। पहले अपनी कहानी लिखें।</div></div>
 </section>
 <section class="card">
 <h2>3. Voice और वीडियो</h2>
-<div class="row"><label>आवाज़ <select id="voice"><option value="">डिवाइस की Default आवाज़</option></select></label><label>हर scene का समय <select id="duration"><option value="4">4 सेकंड</option><option value="5" selected>5 सेकंड</option><option value="7">7 सेकंड</option></select></label></div>
-<div class="actions"><button id="listen" class="secondary">🔊 कहानी सुनें</button><button id="preview" class="secondary">▶ Preview</button><button id="export" class="primary">⬇ पहली Reel मुफ्त बनाएं</button></div>
+<div class="row"><label>आवाज़ <select id="voice"><option value="">डिवाइस की Default आवाज़</option></select></label><label>वीडियो अवधि <select id="duration"><option value="60" selected>1 मिनट (कुल)</option><option value="30">30 सेकंड</option><option value="90">90 सेकंड</option></select></label></div>
+<div class="actions"><button id="makeAudio" class="secondary" type="button">🎙 Gemini हिंदी Voice तैयार करें</button><button id="listen" class="secondary">🔊 कहानी सुनें (Preview)</button><button id="preview" class="secondary">▶ Preview</button><button id="export" class="primary">⬇ पहली Reel मुफ्त बनाएं</button></div><audio id="narrationAudio" controls style="width:100%;margin-top:12px" hidden></audio>
 <canvas id="canvas" width="720" height="1280"></canvas>
 <p id="status" class="status">तैयार। कहानी लिखकर Scenes बनाएं।</p>
 <a id="download" class="download" hidden>वीडियो डाउनलोड करें</a>
 </section>
-<section class="note"><b>ध्यान दें:</b> Premium activation के लिए backend server और Razorpay webhook को deploy/configure करना जरूरी है। सिर्फ ZIP खोलने से automatic verification चालू नहीं होगा।<br><br><b>तकनीकी सीमा:</b> यह शुरुआती free-first version है। यह आपके डिवाइस की उपलब्ध Hindi voice और browser recording का उपयोग करता है। असली AI cartoon image/video generation और MP4 export के लिए बाद में सुरक्षित AI service/API जोड़नी होगी; किसी paid API का उपयोग आपकी अनुमति के बिना नहीं होगा।</section>
+<section class="note"><b>ध्यान दें:</b> Premium activation के लिए backend server और Razorpay webhook को deploy/configure करना जरूरी है। सिर्फ ZIP खोलने से automatic verification चालू नहीं होगा।<br><br><b>तकनीकी सीमा:</b> Gemini से टेक्स्ट/Scenes बनेंगे (आपकी API key और उसकी quota पर निर्भर)। तस्वीरें upload करनी होंगी। Gemini Image/TTS API उपलब्धता और quota पर निर्भर हैं; API उपयोग से शुल्क लग सकता है। वीडियो WEBM में export होता है। Free API quotas बदल सकती हैं; Google की free tier और limits देखें।</section>
 </main>
 <footer>Made for creators • Dipak AI Reel Maker</footer>
 <script src="payment-config.js"></script><script src="app.js"></script>
