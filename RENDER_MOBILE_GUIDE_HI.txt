@@ -1,0 +1,41 @@
+DIPAK AI REEL MAKER — RENDER DEPLOY GUIDE (MOBILE)
+
+IMPORTANT:
+- Render ZIP ko direct upload karke Node app deploy nahi karta. Source code GitHub repository se connect karna hota hai.
+- Is ZIP mein app source hai; Render par live deploy abhi nahi hua.
+- Razorpay webhook secret ko ZIP/GitHub/chat mein kabhi mat daalein. Sirf Render Environment mein set karein.
+- Razorpay paid-customer data ko restart/redeploy ke baad bachane ke liye persistent disk chahiye; Render disk paid plan par ho sakti hai. Free hosting mein data persistence guaranteed nahi.
+
+A) GitHub par source pahunchana (mobile)
+1. ZIP phone mein download karein aur Files app se extract karein.
+2. github.com par sign in karke New repository banayein (example: dipak-ai-reel-maker; Public/Private aapki choice).
+3. Repository ke Add file > Upload files se extracted folder ke ANDAR ki files upload karein: index.html, app.js, style.css, server.js, package.json, payment-config.js, logo.svg, manifest.json, sw.js, README_HI.txt, .env.example.
+4. Upload ke baad repository root mein package.json aur server.js dikhne chahiye (ek extra nested folder ke andar nahi).
+5. Commit changes.
+
+B) Render deploy
+1. render.com par login > New > Web Service.
+2. GitHub repo connect/select karein.
+3. Runtime Node; Build Command: npm install; Start Command: npm start.
+4. Environment Variables:
+   RAZORPAY_PAYMENT_LINK_URL = https://rzp.io/rzp/HUTaDH17
+   PAYMENT_AMOUNT_PAISE = 9900
+   RAZORPAY_WEBHOOK_SECRET = (Razorpay Dashboard mein banaya webhook secret)
+   DATA_FILE = /var/data/paid-customers.json (disk attach karne ke baad)
+5. Paid records persistent rakhne ke liye Render service mein Disk attach karein: Mount path /var/data. Disk unavailable/free plan par ho to payment records restart par mit sakte hain—live payment se pehle zaroor samjhein.
+6. Deploy complete hone par Render https://...onrender.com URL dega. Website kholkar app test karein.
+
+C) Razorpay webhook
+1. Razorpay Dashboard > Account & Settings > Webhooks > Add New Webhook.
+2. Webhook URL: https://YOUR-RENDER-DOMAIN/api/razorpay-webhook
+3. Secret wahi rakhein jo Render RAZORPAY_WEBHOOK_SECRET mein hai.
+4. Event payment_link.paid select karke save karein.
+5. Test payment/webhook karein; live mode mein customer payment se pehle verify karein.
+
+APP KI MAUJOODA LIMITATIONS (honest note)
+- Browser export WEBM hai (MP4 nahi).
+- Gemini API key customer browser mein khud save karta hai (BYOK). Google API free quotas/models vary; unlimited/free guarantee nahi.
+- Gemini text se story/scenes ban sakte hain; image model access aur TTS model/quotas Google account/API par depend karte hain.
+- Scenes ke liye images upload/available generation feature use karein. Exported audio browser recording compatibility par depend karti hai; mobile browser mein test zaroor karein.
+- Free export browser localStorage se limit hota hai, ise clear karke bypass kiya ja sakta hai.
+- Premium activation Email lookup based hai, OTP/login nahi; public launch ke liye secure user auth add karna advisable hai.

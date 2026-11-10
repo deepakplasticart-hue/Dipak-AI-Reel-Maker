@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: dipak-ai-reel-maker
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: RAZORPAY_PAYMENT_LINK_URL
+        value: https://rzp.io/rzp/HUTaDH17
+      - key: PAYMENT_AMOUNT_PAISE
+        value: "9900"
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false

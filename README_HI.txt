@@ -45,3 +45,10 @@ SECURITY / LIMITATIONS
 PAYMENT LINK
 https://rzp.io/rzp/HUTaDH17
 Configured price: ₹99 (9900 paise). Agar link ka amount ₹99 nahi hai, hosting par PAYMENT_AMOUNT_PAISE ko actual amount ke mutabik badlein.
+
+LATEST UI UPDATE (Nov 2026)
+- Added custom Dipak Reel Maker SVG logo (header + app icon).
+- Export duration selector now offers 30 sec / 1 min / 90 sec total duration.
+- Added gentle image zoom animation during export.
+- Razorpay hosted payment link and webhook backend were preserved.
+- Honest current limitation: no Gemini AI generation integrated yet; scene images are uploaded by user. Speech is browser preview only and is not recorded into exported WEBM. MP4/audio narration integration requires a later implementation. This build does not call any paid AI API.
