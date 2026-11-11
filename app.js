@@ -23,18 +23,58 @@ async function checkPremium(){
 $("checkPremium").onclick=checkPremium;
 updatePlanStatus();
 function splitStory(s){return s.split(/(?<=[।.!?])\s+|\n+/).map(x=>x.trim()).filter(Boolean)}
-$("makeScenes").onclick=()=>{const story=$("story").value.trim();if(!story){$("status").textContent="पहले कहानी लिखें।";return}const parts=splitStory(story);sceneData=parts.map((text,i)=>({text,image:null}));renderScenes();$("status").textContent=`${sceneData.length} scenes तैयार हैं। आप हर scene का text बदल सकते हैं और image जोड़ सकते हैं।`};
-function renderScenes(){const root=$("scenes");root.innerHTML="";$("sceneCount").textContent=sceneData.length+" scenes";sceneData.forEach((s,i)=>{const box=document.createElement("div");box.className="scene";const left=document.createElement("div");const label=document.createElement("small");label.textContent=`SCENE ${i+1}`;const ta=document.createElement("textarea");ta.value=s.text;ta.oninput=()=>sceneData[i].text=ta.value;left.append(label,ta);const right=document.createElement("div");const img=document.createElement("img");img.alt="Scene image";img.src=s.image||placeholder(i);const input=document.createElement("input");input.type="file";input.accept="image/*";input.onchange=e=>{const f=e.target.files[0];if(!f)return;s.image=URL.createObjectURL(f);img.src=s.image};right.append(img,input);box.append(left,right);root.append(box)})}
+$("makeScenes").onclick=()=>{const story=$("story").value.trim();if(!story){$("status").textContent="पहले कहानी लिखें।";return}const parts=splitStory(story);sceneData=parts.map((text,i)=>({text,image:null}));sceneAudioBuffers=[];renderScenes();$("status").textContent=`${sceneData.length} scenes तैयार हैं। आप हर scene का text बदल सकते हैं और image जोड़ सकते हैं।`};
+function renderScenes(){const root=$("scenes");root.innerHTML="";$("sceneCount").textContent=sceneData.length+" scenes";sceneData.forEach((s,i)=>{const box=document.createElement("div");box.className="scene";const left=document.createElement("div");const label=document.createElement("small");label.textContent=`SCENE ${i+1}`;const ta=document.createElement("textarea");ta.value=s.text;ta.oninput=()=>{sceneData[i].text=ta.value;sceneAudioBuffers=[];};left.append(label,ta);const right=document.createElement("div");const img=document.createElement("img");img.alt="Scene image";img.src=s.image||placeholder(i);const input=document.createElement("input");input.type="file";input.accept="image/*";input.onchange=e=>{const f=e.target.files[0];if(!f)return;s.image=URL.createObjectURL(f);img.src=s.image};right.append(img,input);box.append(left,right);root.append(box)})}
 function placeholder(i){return `https://placehold.co/600x900/30285c/ffffff?text=Scene+${i+1}`}
 function getVoices(){const voices=speechSynthesis.getVoices();const sel=$("voice");sel.innerHTML='<option value="">डिवाइस की Default आवाज़</option>';voices.forEach((v,i)=>{const o=document.createElement("option");o.value=i;o.textContent=`${v.name} (${v.lang})`;sel.append(o)})}if("speechSynthesis"in window){getVoices();speechSynthesis.onvoiceschanged=getVoices}
 function speak(text){if(!("speechSynthesis"in window)){alert("इस browser में voice सुविधा उपलब्ध नहीं है।");return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang=$("lang").value;const v=speechSynthesis.getVoices()[$("voice").value];if(v)u.voice=v;speechSynthesis.speak(u)}
-$("listen").onclick=()=>{const t=sceneData.map(s=>s.text).join(" ");if(t)speak(t);else $("status").textContent="पहले Scenes बनाएं।"};
+$("listen").onclick=async()=>{
+ if(!sceneData.length)return $("status").textContent="पहले Scenes बनाएं।";
+ if(sceneAudioBuffers.length!==sceneData.length){const t=sceneData.map(s=>s.text).join(" ");if(t)speak(t);return $("status").textContent="अभी scene-wise Gemini voice नहीं बनी है। पहले Voice तैयार करें।";}
+ try{const ac=new (window.AudioContext||window.webkitAudioContext)();await ac.resume();let at=ac.currentTime+0.1;sceneAudioBuffers.forEach((buf,i)=>{const src=ac.createBufferSource();src.buffer=buf;src.connect(ac.destination);src.start(at);setTimeout(()=>drawScene(i,0),Math.max(0,(at-ac.currentTime)*1000));at+=buf.duration+0.18;});setTimeout(()=>ac.close(),(at-ac.currentTime+0.2)*1000);}catch(e){$("status").textContent="Voice preview नहीं चला: "+e.message;}
+};
 const canvas=$("canvas"),ctx=canvas.getContext("2d");let previewTimer=null;
 function drawScene(i,progress=0){const s=sceneData[i];ctx.fillStyle="#211b45";ctx.fillRect(0,0,canvas.width,canvas.height);if(s.image){const im=new Image();im.onload=()=>{const z=1+0.12*progress;const w=canvas.width*z,h=canvas.height*z;ctx.save();ctx.beginPath();ctx.rect(0,0,canvas.width,canvas.height);ctx.clip();ctx.drawImage(im,(canvas.width-w)/2,(canvas.height-h)/2,w,h);ctx.restore();drawCaption(s,i)};im.src=s.image}else{const g=ctx.createLinearGradient(0,0,canvas.width,canvas.height);g.addColorStop(0,"#5542a6");g.addColorStop(1,"#17152d");ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);drawCaption(s,i)}}
 function drawCaption(s,i){ctx.fillStyle="#0009";ctx.fillRect(35,canvas.height-360,canvas.width-70,270);ctx.fillStyle="white";ctx.textAlign="center";ctx.font="bold 42px sans-serif";wrapText(s.text,canvas.width/2,canvas.height-270,canvas.width-110,58);ctx.font="bold 25px sans-serif";ctx.fillText(`DIPAK AI REEL MAKER • ${i+1}/${sceneData.length}`,canvas.width/2,canvas.height-55)}
 function wrapText(text,x,y,maxWidth,lineHeight){let words=text.split(/\s+/),line="",yy=y;for(let n=0;n<words.length;n++){let test=line+words[n]+" ";if(ctx.measureText(test).width>maxWidth&&n>0){ctx.fillText(line,x,yy);line=words[n]+" ";yy+=lineHeight}else line=test}ctx.fillText(line,x,yy)}
-$("preview").onclick=()=>{if(!sceneData.length)return $("status").textContent="पहले Scenes बनाएं।";let i=0;clearInterval(previewTimer);drawScene(0);previewTimer=setInterval(()=>{i=(i+1)%sceneData.length;drawScene(i)},Math.max(1000,Number($("duration").value)*1000/sceneData.length))};
-$("export").onclick=async()=>{if(hasUsedFreeExport() && !(await checkPremium())){ $("status").textContent="Premium access के लिए सफल payment जरूरी है। ऊपर Email डालकर भुगतान जाँचें।"; $("payNow").scrollIntoView({behavior:"smooth",block:"center"}); return; } if(!sceneData.length)return $("status").textContent="पहले Scenes बनाएं।";if(!canvas.captureStream||!window.MediaRecorder)return $("status").textContent="आपका browser video export support नहीं करता। Chrome में खोलकर देखें।";clearInterval(previewTimer);$("download").hidden=true;$("status").textContent="वीडियो तैयार हो रहा है… इस tab को खुला रखें।";const stream=canvas.captureStream(25);const narration=$("narrationAudio");if(narrationBlob&&narration.captureStream){try{narration.currentTime=0;narration.muted=false;narration.play().catch(()=>{});narration.captureStream().getAudioTracks().forEach(t=>stream.addTrack(t));}catch(e){console.warn("Audio track attach failed",e)}}let chunks=[];let recorder;try{recorder=new MediaRecorder(stream,{mimeType:"video/webm;codecs=vp9"});}catch(e){recorder=new MediaRecorder(stream)}recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=()=>{const blob=new Blob(chunks,{type:recorder.mimeType||"video/webm"});if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=URL.createObjectURL(blob);const a=$("download");a.href=currentUrl;a.download="dipak-ai-reel.webm";a.textContent="⬇ वीडियो डाउनलोड करें (WEBM)";a.hidden=false;if(!premiumActive)localStorage.setItem(FREE_EXPORT_KEY,"yes");updatePlanStatus();$("status").textContent="वीडियो तैयार है (WEBM)। यदि Gemini narration बनाई थी तो audio track जोड़ा गया है।"};recorder.start();let i=0;const totalMs=Number($("duration").value)*1000;const perScene=totalMs/sceneData.length;const started=performance.now();const step=()=>{const elapsed=performance.now()-started;const progress=Math.min(1,(elapsed%perScene)/perScene);drawScene(i,progress);i++;if(i<sceneData.length)setTimeout(step,perScene);else setTimeout(()=>{recorder.stop();if(narrationBlob){narration.pause();narration.currentTime=0}},perScene)};step()};
+$("preview").onclick=()=>{if(!sceneData.length)return $("status").textContent="पहले Scenes बनाएं।";if(sceneAudioBuffers.length===sceneData.length){$("listen").click();return;}let i=0;clearInterval(previewTimer);drawScene(0);previewTimer=setInterval(()=>{i=(i+1)%sceneData.length;drawScene(i)},Math.max(1000,Number($("duration").value)*1000/sceneData.length))};
+$("export").onclick=async()=>{
+ if(hasUsedFreeExport() && !(await checkPremium())){ $("status").textContent="Premium access के लिए सफल payment जरूरी है। ऊपर Email डालकर भुगतान जाँचें।"; $("payNow").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+ if(!sceneData.length)return $("status").textContent="पहले Scenes बनाएं।";
+ if(!canvas.captureStream||!window.MediaRecorder)return $("status").textContent="आपका browser video export support नहीं करता। Chrome में खोलकर देखें।";
+ if(!sceneAudioBuffers.length){$("status").textContent="पहले ‘Gemini हिंदी Voice तैयार करें’ दबाकर हर Scene की आवाज़ बनाएं।";return;}
+ clearInterval(previewTimer);$("download").hidden=true;$("status").textContent="वीडियो और आवाज़ को scene-by-scene मिलाया जा रहा है… इस tab को खुला रखें।";
+ let audioCtx;
+ try{
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)(); await audioCtx.resume();
+  const videoStream=canvas.captureStream(25), audioDestination=audioCtx.createMediaStreamDestination();
+  const combined=new MediaStream([...videoStream.getVideoTracks(),...audioDestination.stream.getAudioTracks()]);
+  const mimeCandidates=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  const mimeType=mimeCandidates.find(t=>MediaRecorder.isTypeSupported(t))||'';
+  const recorder=mimeType?new MediaRecorder(combined,{mimeType}):new MediaRecorder(combined);
+  const chunks=[];recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+  recorder.onstop=()=>{
+   const type=recorder.mimeType||mimeType||'video/webm', ext=type.includes('mp4')?'mp4':'webm';
+   const blob=new Blob(chunks,{type});if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=URL.createObjectURL(blob);
+   const a=$("download");a.href=currentUrl;a.download=`dipak-ai-reel.${ext}`;a.textContent=`⬇ वीडियो डाउनलोड करें (${ext.toUpperCase()})`;a.hidden=false;
+   if(!premiumActive)localStorage.setItem(FREE_EXPORT_KEY,"yes");updatePlanStatus();$("status").textContent=`वीडियो तैयार है। ${ext.toUpperCase()} फाइल डाउनलोड बटन दबाकर सेव करें।`;
+   audioCtx.close().catch(()=>{});
+  };
+  recorder.start(250);
+  const gap=0.18, durations=sceneAudioBuffers.map(b=>Math.max(0.6,b.duration)), total=durations.reduce((a,b)=>a+b,0)+gap*(durations.length-1);
+  const startAt=audioCtx.currentTime+0.35;let cursor=startAt;
+  sceneAudioBuffers.forEach((buffer,i)=>{
+   const source=audioCtx.createBufferSource();source.buffer=buffer;source.connect(audioDestination);source.start(cursor);
+   const sceneStart=cursor, sceneEnd=cursor+buffer.duration;
+   setTimeout(()=>drawScene(i,0),Math.max(0,(sceneStart-audioCtx.currentTime)*1000));
+   // Switch only after this scene's own narration has ended.
+   if(i<sceneAudioBuffers.length-1)setTimeout(()=>drawScene(i+1,0),Math.max(0,(sceneEnd-audioCtx.currentTime)*1000));
+   cursor=sceneEnd+gap;
+  });
+  drawScene(0,0);
+  setTimeout(()=>{if(recorder.state==='recording')recorder.stop();},(total+0.7)*1000);
+ }catch(e){console.error(e);$("status").textContent="वीडियो नहीं बन पाया: "+e.message; if(audioCtx)audioCtx.close().catch(()=>{});}
+};
 if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 // Razorpay hosted Payment Link button (no secret key in browser)
 $("payNow").onclick=()=>{
@@ -67,7 +107,7 @@ $("geminiCreate")?.addEventListener("click",async()=>{
   const parsed=JSON.parse(raw.replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,""));
   $("story").value=parsed.story||prompt;
   const texts=Array.isArray(parsed.scenes)&&parsed.scenes.length?parsed.scenes:splitStory(parsed.story||prompt);
-  sceneData=texts.map(text=>({text:String(text),image:null}));renderScenes();
+  sceneData=texts.map(text=>({text:String(text),image:null}));sceneAudioBuffers=[];renderScenes();
   geminiStatus.textContent=`✅ Gemini ने कहानी और ${sceneData.length} scenes बना दिए। अब scene images upload करें।`;$ ("status").textContent="Gemini कहानी तैयार। तस्वीरें जोड़कर Preview/Export करें।";
  }catch(e){geminiStatus.textContent="Gemini नहीं चला: "+e.message+" (API key, quota या internet जाँचें)।"}
  finally{btn.disabled=false;btn.textContent="✨ Gemini से कहानी + Scenes"}
@@ -75,6 +115,7 @@ $("geminiCreate")?.addEventListener("click",async()=>{
 
 // Optional Gemini image generation + Hindi narration audio (BYOK; Google's quotas/pricing apply).
 let narrationBlob=null, narrationObjectUrl=null;
+let sceneAudioBuffers=[];
 async function geminiRequest(model, payload, key){
  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -86,20 +127,32 @@ function pcmToWav(pcmB64, sampleRate=24000){
  write(0,'RIFF');v.setUint32(4,36+bytes.length,true);write(8,'WAVE');write(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sampleRate,true);v.setUint32(28,sampleRate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);write(36,'data');v.setUint32(40,bytes.length,true);new Uint8Array(buffer,44).set(bytes);return new Blob([buffer],{type:'audio/wav'});
 }
 $('makeAudio')?.addEventListener('click',async()=>{
- const key=localStorage.getItem(GEMINI_KEY_STORAGE),text=sceneData.map(x=>x.text).join(' ').trim()||$('story').value.trim();
- if(!key){geminiStatus.textContent='पहले Gemini API Key सेव करें।';geminiKeyInput.focus();return}if(!text){$('status').textContent='पहले कहानी/Scenes बनाएं।';return}
- const b=$('makeAudio');b.disabled=true;b.textContent='🎙 आवाज़ बन रही है…';geminiStatus.textContent='Gemini TTS से हिंदी narration तैयार हो रही है…';
- try{const d=await geminiRequest('gemini-2.5-flash-preview-tts',{contents:[{parts:[{text:text}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Kore'}}}}},key);
- const part=d.candidates?.[0]?.content?.parts?.find(p=>p.inlineData?.data);if(!part)throw new Error('TTS audio response नहीं मिला।');
- narrationBlob=pcmToWav(part.inlineData.data,24000);if(narrationObjectUrl)URL.revokeObjectURL(narrationObjectUrl);narrationObjectUrl=URL.createObjectURL(narrationBlob);const audio=$('narrationAudio');audio.src=narrationObjectUrl;audio.hidden=false;geminiStatus.textContent='✅ हिंदी narration audio तैयार है। Export के समय इसे वीडियो में जोड़ने का प्रयास होगा।';
- }catch(e){geminiStatus.textContent='TTS नहीं चला: '+e.message+' (मॉडल access/quota जाँचें)।'}finally{b.disabled=false;b.textContent='🎙 Gemini हिंदी Voice तैयार करें'}
+ const key=localStorage.getItem(GEMINI_KEY_STORAGE);
+ if(!key){geminiStatus.textContent='पहले Gemini API Key सेव करें।';geminiKeyInput.focus();return}
+ if(!sceneData.length){$('status').textContent='पहले कहानी के Scenes बनाएं।';return}
+ const b=$('makeAudio');b.disabled=true;sceneAudioBuffers=[];b.textContent='🎙 हर Scene की आवाज़ बन रही है…';
+ try{
+  const ac=new (window.AudioContext||window.webkitAudioContext)();
+  for(let i=0;i<sceneData.length;i++){
+   const sceneText=sceneData[i].text.trim();if(!sceneText)throw new Error(`Scene ${i+1} का text खाली है।`);
+   b.textContent=`🎙 आवाज़ ${i+1}/${sceneData.length}…`;geminiStatus.textContent=`Scene ${i+1}/${sceneData.length} की अलग Hindi voice बनाई जा रही है…`;
+   const d=await geminiRequest('gemini-3.1-flash-tts-preview',{contents:[{role:'user',parts:[{text:`Speak this exact Hindi narration clearly and naturally, in a warm storytelling voice. Do not add or omit words: ${sceneText}`}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Kore'}}}}},key);
+   const part=d.candidates?.[0]?.content?.parts?.find(p=>p.inlineData?.data);if(!part)throw new Error(`Scene ${i+1}: audio response नहीं मिला।`);
+   const wav=pcmToWav(part.inlineData.data,24000);const ab=await wav.arrayBuffer();const decoded=await ac.decodeAudioData(ab.slice(0));sceneAudioBuffers.push(decoded);
+  }
+  await ac.close();
+  // Build a single downloadable narration preview in the browser by scheduling the clips.
+  geminiStatus.textContent=`✅ ${sceneAudioBuffers.length} अलग-अलग Scene voices तैयार। हर Scene की आवाज़ उसी Scene के साथ चलेगी।`;
+  $('status').textContent='अब Preview सुनें या Reel Export करें।';
+ }catch(e){sceneAudioBuffers=[];geminiStatus.textContent='TTS नहीं चला: '+e.message+' (API key, मॉडल access या quota जाँचें)।'}
+ finally{b.disabled=false;b.textContent='🎙 Gemini हिंदी Voice तैयार करें'}
 });
 $('generateImages')?.addEventListener('click',async()=>{
  const key=localStorage.getItem(GEMINI_KEY_STORAGE);if(!key){geminiStatus.textContent='पहले Gemini API Key सेव करें।';geminiKeyInput.focus();return}if(!sceneData.length){$('status').textContent='पहले Gemini से Scenes बनाएं।';return}
  const b=$('generateImages');b.disabled=true;let made=0;
  try{for(let i=0;i<sceneData.length;i++){b.textContent=`🎨 तस्वीर ${i+1}/${sceneData.length}…`;geminiStatus.textContent=`Scene ${i+1} की image बन रही है…`;
  const prompt=`Create one beautiful vertical 9:16 story illustration, family friendly, cinematic colorful 2D cartoon, no text, no letters. Scene: ${sceneData[i].text}`;
- const d=await geminiRequest('gemini-2.5-flash-image',{contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['IMAGE','TEXT'] }},key);
+ const d=await geminiRequest('gemini-3.1-flash-image',{contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['IMAGE','TEXT'] }},key);
  const im=d.candidates?.[0]?.content?.parts?.find(p=>p.inlineData?.data);if(!im)throw new Error('Scene '+(i+1)+' image response नहीं मिला।');sceneData[i].image=`data:${im.inlineData.mimeType||'image/png'};base64,${im.inlineData.data}`;made++;renderScenes();}
  geminiStatus.textContent=`✅ ${made} scene images तैयार।`; 
  }catch(e){geminiStatus.textContent=`${made} images बनीं। आगे नहीं बना: ${e.message} (Image model access/quota देखें)।`}
