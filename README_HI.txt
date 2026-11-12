@@ -1,8 +1,8 @@
 DIPAK AI REEL MAKER — Razorpay Webhook Verification Build
 
 IS BUILD MEIN KYA HAI
-- Pehli Reel free export (browser local storage based).
-- Free export ke baad Premium export ke liye server par payment status check.
+- Reel banana/export karna allowed hai; pehli Reel ka download free hai.
+- Pehle free download ke baad agle downloads ke liye server par Premium payment status check.
 - Buyer checkout mein jo Email deta hai, app mein wahi Email daal kar “भुगतान जाँचें” dabaye.
 - Server Razorpay ke signed payment_link.paid webhook ko verify karta hai.
 - Sirf configured Payment Link aur ₹99 (9900 paise) ka fully-paid event Premium activate karta hai.
@@ -38,7 +38,7 @@ CUSTOMER FLOW
 SECURITY / LIMITATIONS
 - Razorpay Webhook Secret kabhi kisi ko chat mein na bhejein aur frontend ZIP mein na rakhein.
 - App mein Email lookup basic activation hai, full customer login/OTP nahi. Kisi doosre vyakti ko Email pata ho to woh us paid Email se access check kar sakta hai. Public commercial launch se pehle OTP/login aur per-user server-side export/download authorization add karna chahiye.
-- Free-download limit browser local storage par hai; ise clear karke bypass kiya ja sakta hai.
+- Free-download limit browser local storage par hai; ise clear karke bypass kiya ja sakta hai. Reel generate karna free rahega; second aur later downloads ke liye Premium verification hota hai.
 - Existing app video generation browser-based WEBM export hai; actual AI image/video generation included nahi hai.
 - Payment link par customer email collect hona zaroori hai. Razorpay Payment Link settings mein customer email required/collected rakhein.
 
@@ -52,3 +52,10 @@ LATEST UI UPDATE (Nov 2026)
 - Added gentle image zoom animation during export.
 - Razorpay hosted payment link and webhook backend were preserved.
 - Honest current limitation: no Gemini AI generation integrated yet; scene images are uploaded by user. Speech is browser preview only and is not recorded into exported WEBM. MP4/audio narration integration requires a later implementation. This build does not call any paid AI API.
+
+
+TRANSITION + SYNC FIX (Nov 2026)
+- Har do scene images ke beech ek hi Smooth Fade transition (0.65 sec).
+- Images pehle preload/render hoti hain; isse export ke dauran image load delay se scene timing bigadne ka risk kam hota hai.
+- Scene changes narration ke audio timeline se sync kiye gaye hain.
+- Reel banana allowed hai; pehli download free, uske baad verified Premium payment ke bina download block hota hai.

@@ -1,12 +1,12 @@
 const $=id=>document.getElementById(id);let sceneData=[];let currentUrl=null;
-const FREE_EXPORT_KEY="dipak_ai_free_export_used_v1";
+const FREE_EXPORT_KEY="dipak_ai_free_download_used_v2";
 let premiumActive=false;
 const API_BASE=window.DIPAK_API_BASE||"";
 function hasUsedFreeExport(){return localStorage.getItem(FREE_EXPORT_KEY)==="yes"}
 function updatePlanStatus(){
  const used=hasUsedFreeExport();
- $("planStatus").textContent=premiumActive?"✅ आपका Premium access सक्रिय है।":(used?"आपकी मुफ्त Reel इस्तेमाल हो चुकी है। Premium खरीदें।":"पहली Reel मुफ्त डाउनलोड करें। इसके बाद Premium access की जरूरत होगी।");
- $("export").textContent=premiumActive?"⬇ Premium Reel डाउनलोड करें":(used?"🔒 Premium के लिए भुगतान करें":"⬇ पहली Reel मुफ्त बनाएं");
+ $("planStatus").textContent=premiumActive?"✅ आपका Premium access सक्रिय है। अब Reel डाउनलोड कर सकते हैं।":(used?"पहली मुफ्त Reel डाउनलोड हो चुकी है। अगली Reel डाउनलोड करने के लिए ₹99 Premium चाहिए।":"पहली Reel का डाउनलोड मुफ्त है। उसके बाद ₹99 Premium लगेगा।");
+ $("export").textContent="🎬 Reel तैयार करें";
 }
 async function checkPremium(){
  const email=$("buyerEmail").value.trim().toLowerCase();
@@ -22,6 +22,24 @@ async function checkPremium(){
 }
 $("checkPremium").onclick=checkPremium;
 updatePlanStatus();
+// The first completed Reel can be downloaded once for free. Later downloads
+// require a successful Razorpay webhook verification for the entered email.
+$("download").addEventListener("click",async(e)=>{
+ if(!hasUsedFreeExport()){
+  localStorage.setItem(FREE_EXPORT_KEY,"yes");updatePlanStatus();
+  $("status").textContent="पहली Reel मुफ्त डाउनलोड हो रही है। अगली Reel डाउनलोड करने के लिए ₹99 Premium चाहिए।";
+  return;
+ }
+ e.preventDefault();
+ const ok=premiumActive||await checkPremium();
+ if(!ok){
+  $("status").textContent="यह अगली Reel है। डाउनलोड खोलने के लिए ₹99 Premium payment करें और भुगतान जाँचें।";
+  $("payNow").scrollIntoView({behavior:"smooth",block:"center"});
+  return;
+ }
+ const temp=document.createElement("a");temp.href=currentUrl;temp.download=$("download").download||"dipak-ai-reel.webm";
+ document.body.appendChild(temp);temp.click();temp.remove();
+});
 function splitStory(s){return s.split(/(?<=[।.!?])\s+|\n+/).map(x=>x.trim()).filter(Boolean)}
 $("makeScenes").onclick=()=>{const story=$("story").value.trim();if(!story){$("status").textContent="पहले कहानी लिखें।";return}const parts=splitStory(story);sceneData=parts.map((text,i)=>({text,image:null}));sceneAudioBuffers=[];renderScenes();$("status").textContent=`${sceneData.length} scenes तैयार हैं। आप हर scene का text बदल सकते हैं और image जोड़ सकते हैं।`};
 function renderScenes(){const root=$("scenes");root.innerHTML="";$("sceneCount").textContent=sceneData.length+" scenes";sceneData.forEach((s,i)=>{const box=document.createElement("div");box.className="scene";const left=document.createElement("div");const label=document.createElement("small");label.textContent=`SCENE ${i+1}`;const ta=document.createElement("textarea");ta.value=s.text;ta.oninput=()=>{sceneData[i].text=ta.value;sceneAudioBuffers=[];};left.append(label,ta);const right=document.createElement("div");const img=document.createElement("img");img.alt="Scene image";img.src=s.image||placeholder(i);const input=document.createElement("input");input.type="file";input.accept="image/*";input.onchange=e=>{const f=e.target.files[0];if(!f)return;s.image=URL.createObjectURL(f);img.src=s.image};right.append(img,input);box.append(left,right);root.append(box)})}
@@ -38,42 +56,109 @@ function drawScene(i,progress=0){const s=sceneData[i];ctx.fillStyle="#211b45";ct
 function drawCaption(s,i){ctx.fillStyle="#0009";ctx.fillRect(35,canvas.height-360,canvas.width-70,270);ctx.fillStyle="white";ctx.textAlign="center";ctx.font="bold 42px sans-serif";wrapText(s.text,canvas.width/2,canvas.height-270,canvas.width-110,58);ctx.font="bold 25px sans-serif";ctx.fillText(`DIPAK AI REEL MAKER • ${i+1}/${sceneData.length}`,canvas.width/2,canvas.height-55)}
 function wrapText(text,x,y,maxWidth,lineHeight){let words=text.split(/\s+/),line="",yy=y;for(let n=0;n<words.length;n++){let test=line+words[n]+" ";if(ctx.measureText(test).width>maxWidth&&n>0){ctx.fillText(line,x,yy);line=words[n]+" ";yy+=lineHeight}else line=test}ctx.fillText(line,x,yy)}
 $("preview").onclick=()=>{if(!sceneData.length)return $("status").textContent="पहले Scenes बनाएं।";if(sceneAudioBuffers.length===sceneData.length){$("listen").click();return;}let i=0;clearInterval(previewTimer);drawScene(0);previewTimer=setInterval(()=>{i=(i+1)%sceneData.length;drawScene(i)},Math.max(1000,Number($("duration").value)*1000/sceneData.length))};
+// All scene changes use one consistent Smooth Fade transition.
+// Render each scene to an off-screen frame first. This avoids image-loading delays
+// during recording and keeps the visual timeline locked to the narration timeline.
+async function makeExportFrames(){
+ const frames=[];
+ for(let i=0;i<sceneData.length;i++){
+  const frame=document.createElement('canvas');frame.width=canvas.width;frame.height=canvas.height;
+  const fctx=frame.getContext('2d'), s=sceneData[i];
+  fctx.fillStyle='#211b45';fctx.fillRect(0,0,frame.width,frame.height);
+  let img=null;
+  if(s.image){
+   try{img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=s.image;});}
+   catch(e){img=null;}
+  }
+  if(img){
+   const scale=Math.max(frame.width/img.width,frame.height/img.height);
+   const w=img.width*scale,h=img.height*scale;
+   fctx.drawImage(img,(frame.width-w)/2,(frame.height-h)/2,w,h);
+  }else{
+   const g=fctx.createLinearGradient(0,0,frame.width,frame.height);
+   g.addColorStop(0,'#5542a6');g.addColorStop(1,'#17152d');
+   fctx.fillStyle=g;fctx.fillRect(0,0,frame.width,frame.height);
+  }
+  fctx.fillStyle='#0009';fctx.fillRect(35,frame.height-360,frame.width-70,270);
+  fctx.fillStyle='#fff';fctx.textAlign='center';fctx.font='bold 42px sans-serif';
+  const words=String(s.text||'').split(/\s+/);let line='',yy=frame.height-270;
+  for(let n=0;n<words.length;n++){
+   const test=line+words[n]+' ';
+   if(fctx.measureText(test).width>frame.width-110&&n>0){fctx.fillText(line,frame.width/2,yy);line=words[n]+' ';yy+=58;}
+   else line=test;
+  }
+  if(line)fctx.fillText(line,frame.width/2,yy);
+  fctx.font='bold 25px sans-serif';
+  fctx.fillText(`DIPAK AI REEL MAKER • ${i+1}/${sceneData.length}`,frame.width/2,frame.height-55);
+  frames.push(frame);
+ }
+ return frames;
+}
+
 $("export").onclick=async()=>{
- if(hasUsedFreeExport() && !(await checkPremium())){ $("status").textContent="Premium access के लिए सफल payment जरूरी है। ऊपर Email डालकर भुगतान जाँचें।"; $("payNow").scrollIntoView({behavior:"smooth",block:"center"}); return; }
  if(!sceneData.length)return $("status").textContent="पहले Scenes बनाएं।";
  if(!canvas.captureStream||!window.MediaRecorder)return $("status").textContent="आपका browser video export support नहीं करता। Chrome में खोलकर देखें।";
  if(!sceneAudioBuffers.length){$("status").textContent="पहले ‘Gemini हिंदी Voice तैयार करें’ दबाकर हर Scene की आवाज़ बनाएं।";return;}
- clearInterval(previewTimer);$("download").hidden=true;$("status").textContent="वीडियो और आवाज़ को scene-by-scene मिलाया जा रहा है… इस tab को खुला रखें।";
+ if(sceneAudioBuffers.length!==sceneData.length){$("status").textContent="हर Scene की आवाज़ और Scene की संख्या बराबर नहीं है। Voice दोबारा तैयार करें।";return;}
+ clearInterval(previewTimer);$("download").hidden=true;$("export").disabled=true;
+ $("status").textContent="तस्वीरें तैयार हो रही हैं और आवाज़ के साथ Smooth Fade Transition लगाया जा रहा है…";
  let audioCtx;
  try{
-  audioCtx=new (window.AudioContext||window.webkitAudioContext)(); await audioCtx.resume();
-  const videoStream=canvas.captureStream(25), audioDestination=audioCtx.createMediaStreamDestination();
+  const frames=await makeExportFrames();
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();await audioCtx.resume();
+  const videoStream=canvas.captureStream(30),audioDestination=audioCtx.createMediaStreamDestination();
   const combined=new MediaStream([...videoStream.getVideoTracks(),...audioDestination.stream.getAudioTracks()]);
   const mimeCandidates=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
   const mimeType=mimeCandidates.find(t=>MediaRecorder.isTypeSupported(t))||'';
   const recorder=mimeType?new MediaRecorder(combined,{mimeType}):new MediaRecorder(combined);
   const chunks=[];recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   recorder.onstop=()=>{
-   const type=recorder.mimeType||mimeType||'video/webm', ext=type.includes('mp4')?'mp4':'webm';
+   const type=recorder.mimeType||mimeType||'video/webm',ext=type.includes('mp4')?'mp4':'webm';
    const blob=new Blob(chunks,{type});if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=URL.createObjectURL(blob);
    const a=$("download");a.href=currentUrl;a.download=`dipak-ai-reel.${ext}`;a.textContent=`⬇ वीडियो डाउनलोड करें (${ext.toUpperCase()})`;a.hidden=false;
-   if(!premiumActive)localStorage.setItem(FREE_EXPORT_KEY,"yes");updatePlanStatus();$("status").textContent=`वीडियो तैयार है। ${ext.toUpperCase()} फाइल डाउनलोड बटन दबाकर सेव करें।`;
-   audioCtx.close().catch(()=>{});
+   updatePlanStatus();$("status").textContent=`वीडियो तैयार है। सभी images के बीच Smooth Fade Transition और scene-wise voice sync शामिल है। पहली Reel का download मुफ्त है; आगे के download के लिए Premium चाहिए। ${ext.toUpperCase()} फाइल डाउनलोड बटन दबाएँ।`;
+   $("export").disabled=false;audioCtx.close().catch(()=>{});
+  };
+  const gap=0.12,durations=sceneAudioBuffers.map(b=>b.duration);
+  const starts=[];let total=0;
+  durations.forEach((d,i)=>{starts.push(total);total+=d+(i<durations.length-1?gap:0);});
+  const fadeDuration=0.65;
+  const drawTimeline=(elapsed)=>{
+   ctx.clearRect(0,0,canvas.width,canvas.height);
+   // Check transition windows first, so the fade continues smoothly on both
+   // sides of the exact scene boundary.
+   for(let j=1;j<starts.length;j++){
+    const fadeStart=starts[j]-fadeDuration/2;
+    if(elapsed>=fadeStart&&elapsed<=fadeStart+fadeDuration){
+     const t=Math.max(0,Math.min(1,(elapsed-fadeStart)/fadeDuration));
+     ctx.globalAlpha=1;ctx.drawImage(frames[j-1],0,0,canvas.width,canvas.height);
+     ctx.globalAlpha=t;ctx.drawImage(frames[j],0,0,canvas.width,canvas.height);
+     ctx.globalAlpha=1;return;
+    }
+   }
+   let active=0;
+   for(let j=1;j<starts.length;j++){if(elapsed>=starts[j])active=j;else break;}
+   active=Math.min(active,frames.length-1);
+   ctx.globalAlpha=1;ctx.drawImage(frames[active],0,0,canvas.width,canvas.height);
   };
   recorder.start(250);
-  const gap=0.18, durations=sceneAudioBuffers.map(b=>Math.max(0.6,b.duration)), total=durations.reduce((a,b)=>a+b,0)+gap*(durations.length-1);
-  const startAt=audioCtx.currentTime+0.35;let cursor=startAt;
+  const audioStart=audioCtx.currentTime+0.35,wallStart=performance.now()+350;
   sceneAudioBuffers.forEach((buffer,i)=>{
-   const source=audioCtx.createBufferSource();source.buffer=buffer;source.connect(audioDestination);source.start(cursor);
-   const sceneStart=cursor, sceneEnd=cursor+buffer.duration;
-   setTimeout(()=>drawScene(i,0),Math.max(0,(sceneStart-audioCtx.currentTime)*1000));
-   // Switch only after this scene's own narration has ended.
-   if(i<sceneAudioBuffers.length-1)setTimeout(()=>drawScene(i+1,0),Math.max(0,(sceneEnd-audioCtx.currentTime)*1000));
-   cursor=sceneEnd+gap;
+   const source=audioCtx.createBufferSource();source.buffer=buffer;source.connect(audioDestination);
+   source.start(audioStart+starts[i]);
   });
-  drawScene(0,0);
-  setTimeout(()=>{if(recorder.state==='recording')recorder.stop();},(total+0.7)*1000);
- }catch(e){console.error(e);$("status").textContent="वीडियो नहीं बन पाया: "+e.message; if(audioCtx)audioCtx.close().catch(()=>{});}
+  let rafId=0;
+  const animate=()=>{
+   const elapsed=(performance.now()-wallStart)/1000;
+   drawTimeline(Math.max(0,elapsed));
+   if(elapsed<total+0.1)rafId=requestAnimationFrame(animate);
+  };
+  drawTimeline(0);rafId=requestAnimationFrame(animate);
+  setTimeout(()=>{cancelAnimationFrame(rafId);if(recorder.state==='recording')recorder.stop();},(total+0.55)*1000);
+ }catch(e){
+  console.error(e);$("status").textContent="वीडियो नहीं बन पाया: "+e.message;
+  $("export").disabled=false;if(audioCtx)audioCtx.close().catch(()=>{});
+ }
 };
 if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 // Razorpay hosted Payment Link button (no secret key in browser)
